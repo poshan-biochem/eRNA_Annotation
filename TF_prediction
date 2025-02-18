@@ -1,0 +1,85 @@
+# Load required libraries
+library(BSgenome.Hsapiens.UCSC.hg38)  # Change this based on genome version
+library(Biostrings)
+library(motifmatchr)
+library(JASPAR2024)
+library(TFBSTools)
+library(ggseqlogo)
+library(ggplot2)
+
+
+LL_top <- arrange(LL, -as.numeric(HH$TPM))[1:100,]
+
+gr <- promoters(LL_top, upstream = 1000, downstream = 35, use.names = T)
+
+gr
+
+library("BSgenome.Hsapiens.NCBI.GRCh38")
+
+BiocManager::install("motifmatchr")
+BiocManager::install("JASPAR2024")
+BiocManager::install("ggseqlogo")
+
+
+
+# Assuming you already have a GRanges object called 'gr'
+# Extract FASTA sequences
+
+sequences <- getSeq(BSgenome.Hsapiens.NCBI.GRCh38, gr)
+
+sequences
+
+# Convert to character vector for motif analysis
+seqs_char <- as.character(sequences)
+
+seqs_char
+
+# Get JASPAR motifs (Human TFs)
+opts <- list(species = 9606)  # 9606 is the taxonomy ID for Homo sapiens
+
+
+
+  
+getmat
+
+jaspar
+
+pfm_list <- getMatrixSet("/home/poshan/.cache/R/BiocFileCache/148e445fa0aa_JASPAR2024.sqlite" , opts)
+
+pfm_list <- getMatrixSet(JASPAR2024, opts = opts)
+
+pfm_list
+
+
+
+# Match motifs in sequences
+
+
+motif_hits <- matchMotifs(pfm_list, subject = gr, out = "scores", genome = "BSgenome.Hsapiens.NCBI.GRCh38")
+
+# Extract the most enriched motif per region
+
+assays(motif_hits)$motifScores
+
+scores <- motifScores(motif_hits)
+
+motifScores
+
+best_motifs <- apply(scores, 1, function(x) names(pfm_list)[which.max(x)])
+
+# Convert to data frame
+df <- data.frame(range = seqnames(gr), start = start(gr), end = end(gr), motif = best_motifs)
+
+# Plot motif frequency
+ggplot(df, aes(motif)) +
+  geom_bar(fill = "blue") +
+  theme_minimal() +
+  labs(title = "Most Likely TF Motifs in Each Range", x = "Motif", y = "Frequency")
+
+# Optional: Plot sequence logos for top motifs
+top_motifs <- names(sort(table(df$motif), decreasing = TRUE)[1:5])
+seqlogos <- lapply(top_motifs, function(m) ggseqlogo(pfm_list[[m]]))
+gridExtra::grid.arrange(grobs = seqlogos, ncol = 2)
+
+
+top_motifs
